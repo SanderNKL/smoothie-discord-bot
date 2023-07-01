@@ -8,12 +8,12 @@ from discord.ui import Button, View
 class Cute(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.fit_posts = get.random_reddit_post(['cute', 'aww'], get.reddit_connection())
+        self.fit_posts = get.reddit_posts(['cute', 'aww'], get.reddit_connection())
         self.get_new_memes.start()
 
     @tasks.loop(seconds=10800)
     async def get_new_memes(self):
-        self.fit_posts = get.random_reddit_post(['cute', 'aww'], get.reddit_connection())
+        self.fit_posts = get.reddit_posts(['cute', 'aww'], get.reddit_connection())
 
     @app_commands.command(
         name="cute",

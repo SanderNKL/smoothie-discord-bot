@@ -98,7 +98,7 @@ def reddit_connection():
     return headers
 
 
-def random_reddit_post(subreddits: list, headers=None):
+def reddit_posts(subreddits: list, headers=None):
     if not headers:
         headers = reddit_connection()
 

@@ -13,7 +13,7 @@ class Memes(commands.Cog):
 
     @tasks.loop(seconds=10800)
     async def get_new_memes(self):
-        self.fit_posts = get.random_reddit_post(['memes', 'funny'], get.reddit_connection())
+        self.fit_posts = get.reddit_posts(['memes', 'funny'], get.reddit_connection())
 
     @app_commands.command(
         name="meme",
@@ -22,7 +22,7 @@ class Memes(commands.Cog):
     async def memes(self, interaction: discord.Interaction):
         """Get memes from reddit"""
         await interaction.response.defer()
-        reddit_post = get.random_reddit_post(self.fit_posts)
+        reddit_post = get.reddit_posts(self.fit_posts)
 
         embed = discord.Embed(
             title=reddit_post['title'],

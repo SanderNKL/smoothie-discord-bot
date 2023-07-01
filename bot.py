@@ -23,7 +23,6 @@ from handlers import healthcheck
 DATABASE = Database()
 INTENTS = discord.Intents.default()
 INTENTS.guilds = True
-INTENTS.members = True
 INTENTS.message_content = True
 
 bot = commands.AutoShardedBot(

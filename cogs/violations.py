@@ -4,6 +4,7 @@ from discord import app_commands
 from database import Database
 import config as config
 from handlers import logging
+from discord.ui import Button, View
 
 
 class Violation(commands.Cog):
@@ -18,6 +19,55 @@ class Violation(commands.Cog):
         self.bot = bot
         self.db = Database()
 
+    @commands.Cog.listener()
+    async def on_interaction(self, interaction: discord.Interaction):
+        """Detects when a user clicks a button or uses a slash command"""
+
+        # Ensures that the interaction is a button, and not a slash commabd
+        if interaction.type.name != "component":
+            return
+        
+        button = interaction.data["custom_id"].split("_")
+        if button[0] != "violation":
+            return
+
+        await interaction.response.defer()  # Let's discord know we are processing it
+        user = await self.bot.fetch_user(int(button[2])) 
+
+        if button[1] == "first":
+            page = 1
+
+        elif button[1] == "prev":
+            page = int(interaction.message.embeds[0].footer.text.split(" ")[2]) - 1
+            if page < 1:
+                page = 999
+
+        elif button[1] == "next":
+            page = int(interaction.message.embeds[0].footer.text.split(" ")[2]) + 1
+            if page > 999:
+                page = 1
+
+        elif button[1] == "last":
+            page = 999
+
+        else:
+            # We should never end up here
+            # But if we do, this is a safety net
+            page = 1
+
+        embed, view = await self.get_violations(
+            interaction,
+            user,
+            interaction.user,
+            page
+        )
+
+        await interaction.followup.edit_message(
+            interaction.message.id,
+            embed=embed,
+            view=view
+        )
+
     async def get_violations(
         self,
         interaction: discord.Interaction,
@@ -28,7 +78,11 @@ class Violation(commands.Cog):
         embed = discord.Embed(
             title="Registered Violations",
             description="Shows the 10 most recent violations given to a user (or) given by a moderator.",
-            color=config.COLOR_ERROR
+            color=config.COLOR_SMOOTHIE
+        )
+
+        embed.set_footer(
+            text=f"Viewing Page: {page}"
         )
 
         violations = await logging.get_violations(interaction.guild, user, moderator, page-1)
@@ -62,7 +116,40 @@ class Violation(commands.Cog):
                 value="""```There appears to be no records!```"""
             )
 
-        return embed
+        view = View()
+        view.add_item(
+            Button(
+                label="First Page",
+                style=discord.ButtonStyle.blurple,
+                custom_id=f"violation_first_{user.id}_{interaction.user.id}"
+            )
+        )
+
+        view.add_item(
+            Button(
+                label="Previous Page",
+                style=discord.ButtonStyle.blurple,
+                custom_id=f"violation_prev_{user.id}_{interaction.user.id}"
+            )
+        )
+
+        view.add_item(
+            Button(
+                label="Next Page",
+                style=discord.ButtonStyle.blurple,
+                custom_id=f"violation_next_{user.id}_{interaction.user.id}"
+            )
+        )
+
+        view.add_item(
+            Button(
+                label="Last Page",
+                style=discord.ButtonStyle.blurple,
+                custom_id=f"violation_last_{user.id}_{interaction.user.id}"
+            )
+        )
+
+        return embed, view
 
     @app_commands.command(
         name="violations",
@@ -83,8 +170,17 @@ class Violation(commands.Cog):
             return
 
         await interaction.response.defer()
-        embed = await self.get_violations(interaction, user, moderator, 1)
-        await interaction.followup.send(embed=embed)
+        embed, view = await self.get_violations(
+            interaction,
+            user,
+            moderator,
+            1
+        )
+
+        await interaction.followup.send(
+            embed=embed,
+            view=view
+        )
 
 
 async def setup(bot):
