@@ -1,0 +1,13 @@
+discord.py
+asyncio
+topggpy
+aiohttp
+dnspython
+pymongo
+motor
+python-dateutil
+validators
+python-dotenv
+pillow
+googletrans==3.1.0a0 
+requests
