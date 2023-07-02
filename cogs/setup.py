@@ -370,7 +370,7 @@ class Setup(commands.Cog):
             embed.add_field(name="Channel", value=message.channel.mention)
             embed.add_field(name="User", value=f"{message.author.mention}")
             embed.add_field(name="Message", value=message.content, inline=False)
-            embed.set_author(name=f"{message.author}", icon_url=get.get_avatar(message.author.avatar))
+            embed.set_author(name=f"{message.author}", icon_url=get.user_avatar(message.author.avatar))
             embed.set_thumbnail(url=message.guild.icon)
             await channel.send(
                 f"{emojis.MAJOR_WARNING} A **message** was **deleted** in {message.channel.mention}",
@@ -425,7 +425,7 @@ class Setup(commands.Cog):
 
         embed.add_field(name="Channel", value=message_after.channel.mention)
         embed.add_field(name="User", value=f"{message_after.author.mention}")
-        embed.set_author(name=f"{message_after.author}", icon_url=get.get_avatar(message_after.author.avatar))
+        embed.set_author(name=f"{message_after.author}", icon_url=get.user_avatar(message_after.author.avatar))
 
         embed.add_field(
             name="View Message",
@@ -468,7 +468,7 @@ class Setup(commands.Cog):
         embed.set_footer(text=f"User ID: {after.id}")
 
         embed.add_field(name="User", value=f"{after.mention}")
-        embed.set_author(name=f"{after}", icon_url=get.get_avatar(after.avatar))
+        embed.set_author(name=f"{after}", icon_url=get.user_avatar(after.avatar))
 
         if before.name != after.name:
             embed.add_field(
@@ -499,7 +499,7 @@ class Setup(commands.Cog):
                 inline=False
             )
 
-            embed.set_thumbnail(url=get.get_avatar(after.display_avatar.url))
+            embed.set_thumbnail(url=get.user_avatar(after.display_avatar.url))
 
         for guild in after.mutual_guilds:
             server = await self.db.get_server(str(guild.id))
@@ -536,7 +536,7 @@ class Setup(commands.Cog):
         embed.set_footer(text=f"User ID: {after.id}")
 
         embed.add_field(name="User", value=f"{after.mention}")
-        embed.set_author(name=f"{after}", icon_url=get.get_avatar(after.avatar))
+        embed.set_author(name=f"{after}", icon_url=get.user_avatar(after.avatar))
 
         if before.display_name != after.display_name:
             new_change = True
@@ -570,7 +570,7 @@ class Setup(commands.Cog):
                 inline=False
             )
 
-            embed.set_thumbnail(url=get.get_avatar(after.avatar))
+            embed.set_thumbnail(url=get.user_avatar(after.avatar))
 
         if new_change is False:
             return
@@ -630,7 +630,7 @@ class Setup(commands.Cog):
         embed.add_field(name="User", value=f"{member.mention}")
         embed.add_field(name="Created", value=f"{self.how_long_ago(account_age)} ago")
         embed.add_field(name="Server Count", value=member.guild.member_count)
-        embed.set_author(name=f"{member}", icon_url=get.get_avatar(member.avatar))
+        embed.set_author(name=f"{member}", icon_url=get.user_avatar(member.avatar))
         embed.set_thumbnail(url=member.guild.icon)
 
         try:  # We try to send the message in the channel
@@ -731,7 +731,7 @@ class Setup(commands.Cog):
 
             embed.add_field(name="User", value=f"{member.mention}")
             embed.add_field(name="Created", value=f"{self.how_long_ago(member.created_at.timestamp())} ago")
-            embed.set_author(name=f"{member}", icon_url=get.get_avatar(member.avatar))
+            embed.set_author(name=f"{member}", icon_url=get.user_avatar(member.avatar))
             embed.set_thumbnail(url=member.guild.icon)
 
             try:  # We try to send the message in the channel
