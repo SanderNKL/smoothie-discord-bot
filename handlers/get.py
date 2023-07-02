@@ -29,7 +29,7 @@ def button_color(
 
     return color
 
-def user_avatar(user):
+def user_avatar(user: discord.User):
     if user.avatar:
         return user.avatar.url
 

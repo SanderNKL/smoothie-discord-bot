@@ -39,7 +39,7 @@ class SendSuggestion(discord.ui.Modal, title="Make a suggestion for your server!
             title=self.suggestion.value.capitalize(),
             description=self.description.value,
             timestamp=datetime.datetime.utcnow(),
-            color=get.embed_color(interaction.user.id),
+            color=await get.embed_color(interaction.user.id),
         )
 
         embed.set_author(
