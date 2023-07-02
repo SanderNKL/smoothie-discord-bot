@@ -1,7 +1,7 @@
 from time import time
 
 
-def is_account_fake(self, user):
+def is_account_fake(user):
     """
     Account Checker: Is it Fake?
 
