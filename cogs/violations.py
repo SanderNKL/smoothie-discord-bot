@@ -4,6 +4,7 @@ from discord import app_commands
 from database import Database
 import config as config
 from handlers import logging
+import math
 from discord.ui import Button, View
 
 
@@ -32,7 +33,25 @@ class Violation(commands.Cog):
             return
 
         await interaction.response.defer()  # Let's discord know we are processing it
-        user = await self.bot.fetch_user(int(button[2])) 
+        
+        # Get User Data from Buttons
+        if button[2] != "none":
+            user = await self.bot.fetch_user(int(button[2]))
+
+        else:
+            user = None
+
+        if button[3] != "none":
+            moderator = await self.bot.fetch_user(int(button[3]))
+        
+        else:
+            moderator = None
+
+        last_page = math.ceil(
+            await logging.total_violations(interaction.guild, user, moderator)  # Amount of Violations
+            /
+            10
+        )
 
         if button[1] == "first":
             page = 1
@@ -40,15 +59,15 @@ class Violation(commands.Cog):
         elif button[1] == "prev":
             page = int(interaction.message.embeds[0].footer.text.split(" ")[2]) - 1
             if page < 1:
-                page = 999
+                page = last_page
 
         elif button[1] == "next":
             page = int(interaction.message.embeds[0].footer.text.split(" ")[2]) + 1
-            if page > 999:
+            if page > last_page:
                 page = 1
 
         elif button[1] == "last":
-            page = 999
+            page = last_page
 
         else:
             # We should never end up here
@@ -75,6 +94,14 @@ class Violation(commands.Cog):
         moderator: discord.User,
         page: int
     ):
+        user_id = "none"
+        moderator_id = "none"
+        if user:
+            user_id = user.id
+
+        if moderator:
+            moderator_id = moderator.id
+
         embed = discord.Embed(
             title="Registered Violations",
             description="Shows the 10 most recent violations given to a user (or) given by a moderator.",
@@ -121,7 +148,7 @@ class Violation(commands.Cog):
             Button(
                 label="First Page",
                 style=discord.ButtonStyle.blurple,
-                custom_id=f"violation_first_{user.id}_{interaction.user.id}"
+                custom_id=f"violation_first_{user_id}_{moderator_id}"
             )
         )
 
@@ -129,7 +156,7 @@ class Violation(commands.Cog):
             Button(
                 label="Previous Page",
                 style=discord.ButtonStyle.blurple,
-                custom_id=f"violation_prev_{user.id}_{interaction.user.id}"
+                custom_id=f"violation_prev_{user_id}_{moderator_id}"
             )
         )
 
@@ -137,7 +164,7 @@ class Violation(commands.Cog):
             Button(
                 label="Next Page",
                 style=discord.ButtonStyle.blurple,
-                custom_id=f"violation_next_{user.id}_{interaction.user.id}"
+                custom_id=f"violation_next_{user_id}_{moderator_id}"
             )
         )
 
@@ -145,7 +172,7 @@ class Violation(commands.Cog):
             Button(
                 label="Last Page",
                 style=discord.ButtonStyle.blurple,
-                custom_id=f"violation_last_{user.id}_{interaction.user.id}"
+                custom_id=f"violation_last_{user_id}_{moderator_id}"
             )
         )
 
@@ -169,7 +196,7 @@ class Violation(commands.Cog):
             )
             return
 
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         embed, view = await self.get_violations(
             interaction,
             user,
@@ -179,7 +206,8 @@ class Violation(commands.Cog):
 
         await interaction.followup.send(
             embed=embed,
-            view=view
+            view=view,
+            ephemeral=True
         )
 
 

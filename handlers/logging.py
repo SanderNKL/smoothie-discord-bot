@@ -43,6 +43,27 @@ async def log_violation(
         print("Issue with logging violation:", e)
 
 
+async def total_violations(
+        guild: discord.Guild,
+        violator: discord.User = None,
+        moderator: discord.User = None,
+):
+
+    query_data = {"guild_id": guild.id}
+    if not violator and not moderator:
+        return 0
+
+    if violator:
+        query_data['violator_id'] = violator.id
+
+    if moderator:
+        query_data['moderator_id'] = moderator.id
+
+    search = database.violations.find(query_data)
+    received = await search.to_list(length=None)
+    return len(received)
+
+
 async def get_violations(
         guild: discord.Guild,
         violator: discord.User = None,
