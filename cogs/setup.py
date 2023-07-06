@@ -752,35 +752,6 @@ class Setup(commands.Cog):
                 print("Issue with sending message in channel in on_member_join:", e)
                 return
 
-    async def check_guild_roles(self, interaction: discord.Interaction, server, allowed_roles):
-        # Making a list of the roles for the guild
-        list_of_roles = list()
-        active_roles = list()
-
-        # Check for roles in the guild and add them
-        for role in interaction.guild.roles:
-            list_of_roles.append(str(role.id))
-
-        # Check for and delete old roles in autoroles that are deleted
-        for role in server['autoroles']['roles']:
-            if role not in list_of_roles:
-                await Database().server_data.update_one(
-                    {"_server_id": str(interaction.guild.id)},
-                    {"$unset": {f"autoroles.roles.{role}": ""}}
-                )
-
-            else:
-                active_roles.append(role)
-
-        if len(active_roles) >= allowed_roles:
-            await interaction.response.send_message(
-                f"You can't have more than {allowed_roles} autoroles!\n"
-                "Consider purchasing premium to support us.", ephemeral=True
-            )
-            return len(active_roles)
-
-        return len(active_roles)
-
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
         """Detects when a user clicks a button or uses a slash command"""
@@ -800,16 +771,8 @@ class Setup(commands.Cog):
             server = await Database().get_server(str(interaction.guild.id), True)  # Just making sure it exists
             active_roles = 0
 
-            # Load allowed autoroles perk
-            allowed_roles = await self.load_user_perk(user_id, "autoroles")
-            if allowed_roles is None or allowed_roles is False:
-                allowed_roles = 1
-
-                if 'autoroles' in server and 'roles' in server['autoroles'] and len(server['autoroles']['roles']) > 0:
-                    active_roles = await self.check_guild_roles(interaction, server, allowed_roles)
-
-            if active_roles >= allowed_roles:
-                return
+            if 'autoroles' in server and 'roles' in server['autoroles'] and len(server['autoroles']['roles']) > 0:
+                active_roles = await self.check_guild_roles(interaction, server)
 
             await interaction.response.send_modal(
                 AddAutoRoles(
