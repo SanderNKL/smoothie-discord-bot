@@ -769,10 +769,6 @@ class Setup(commands.Cog):
 
         if button == f"setup_autorole_add_{user_id}":
             server = await Database().get_server(str(interaction.guild.id), True)  # Just making sure it exists
-            active_roles = 0
-
-            if 'autoroles' in server and 'roles' in server['autoroles'] and len(server['autoroles']['roles']) > 0:
-                active_roles = await self.check_guild_roles(interaction, server)
 
             await interaction.response.send_modal(
                 AddAutoRoles(
