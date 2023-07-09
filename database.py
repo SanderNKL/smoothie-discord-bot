@@ -3,6 +3,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from config import DB_USERNAME, DB_PASSWORD, DB_SERVER, DB_NAME
 from bson.objectid import ObjectId
 import time
+import discord
 
 
 class Database(object):
@@ -26,22 +27,29 @@ class Database(object):
         self.giveaways = self.async_db.giveaways
         self.invites = self.async_db.invites
 
-    async def sync_invites(self, guild):
+    async def sync_invites(self, guild: discord.Guild):
         for invite in await guild.invites():
-            await self.db.invites.update_one(
-            {
-                "guild_id": str(guild.id),
-                "user_id": str(invite.inviter.id),
-                "invite_id": str(invite.id),
-            },
-            {
-                "$set": {
-                    "leaves": {},
-                    "joins": {},
-                    "uses": invite.uses
-                }
-            }, upsert=True
-        )
+            try:
+                existing_invite = await self.invites.find_one({
+                    "invite_id": str(invite.id),
+                    "guild_id": str(guild.id),
+                    "user_id": str(invite.inviter.id)
+                })
+
+                if not existing_invite:
+                    await self.invites.insert_one(
+                        {
+                            "guild_id": str(guild.id),
+                            "user_id": str(invite.inviter.id),
+                            "invite_id": str(invite.id),
+                            "leaves": {},
+                            "joins": {},
+                            "uses": invite.uses
+                        }
+                    )
+                
+            except Exception as e:
+                print("Issue with syncing invites:", e)
 
     async def add_game(self, data):
         data = await self.active_games.insert_one(data)
