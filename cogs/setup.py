@@ -526,6 +526,128 @@ class Setup(commands.Cog):
 
                 else:
                     continue
+    
+    @commands.Cog.listener()
+    async def on_presence_update(self, before, after):
+        embed = discord.Embed(color=config.COLOR_EMPTY)
+        embed.timestamp = datetime.datetime.utcnow()
+        embed.set_footer(text=f"User ID: {after.id}")
+        embed.add_field(name="User", value=f"{after.mention}")
+        embed.set_author(name=f"{after}", icon_url=get.user_avatar(after))
+
+        new_change = False
+        if before.display_name != after.display_name:
+            new_change = True
+
+            if after.nick:
+                title = "Nickname added"
+
+            elif after.nick is None:
+                title = "Nickname removed"
+
+            else:
+                title = "Nickname changed"
+
+            embed.add_field(
+                name=f"{title}",
+                value=(
+                    f"**Before:** {before.display_name}\n"
+                    f"**After:** {after.display_name}"
+                ),
+                inline=False
+            )
+
+        if before.display_avatar != after.display_avatar:
+            new_change = True
+
+            embed.add_field(
+                name="Server avatar change",
+                value=(
+                    "The user changed their avatar for this server"
+                ),
+                inline=False
+            )
+
+            embed.set_thumbnail(url=get.user_avatar(after))
+
+        if new_change is False:
+            return
+
+        server = await self.db.get_server(str(before.guild.id))
+        if server:
+            # Check that the server supports leave logs
+            if 'logs' in server and 'user' in server['logs']:
+                try:
+                    channel = await self.bot.fetch_channel(server['logs']['user'])
+                    await channel.send(
+                        f"{emojis.MAJOR_WARNING} A **user** changed their **server profile**", embed=embed
+                    )
+
+                except discord.Forbidden:
+                    await self.db.update_server(str(before.guild.id), "logs.user", 1, delete=True)
+                    return
+
+                except discord.NotFound:
+                    await self.db.update_server(str(before.guild.id), "logs.user", 1, delete=True)
+                    return
+
+                except Exception as e:
+                    print("Issue with fetching channel in on_member_update:", e)
+                    return
+
+            else:
+                return
+
+    async def log_user_join(self, server, member):
+        try:  # We try to load the join channel
+            channel = await self.bot.fetch_channel(server['logs']['join'])
+
+        except discord.Forbidden:
+            await self.db.update_server(str(member.guild.id), "logs.join", 1, True)
+
+        except discord.NotFound:
+            await self.db.update_server(str(member.guild.id), "logs.join", 1, True)
+
+        except Exception as e:  # If we fail, we delete the logs channel since it doesn't work.
+            print("Issue with fetching channel in on_member_join:", e)
+            return
+
+        account_age = member.created_at.timestamp()
+
+        embed = discord.Embed(color=config.COLOR_EMPTY)
+        embed.timestamp = datetime.datetime.utcnow()
+        embed.set_footer(text=f"User ID: {member.id}")
+
+        if time.time() - account_age < 2592000:
+            embed.add_field(
+                name=f"{emojis.WARNING} NEW ACCOUNT",
+                value="This account was created recently!",
+                inline=False
+            )
+
+        embed.add_field(name="User", value=f"{member.mention}")
+        embed.add_field(name="Created", value=f"{self.how_long_ago(account_age)} ago")
+        embed.add_field(name="Server Count", value=member.guild.member_count)
+        embed.set_author(name=f"{member}", icon_url=get.user_avatar(member))
+        embed.set_thumbnail(url=member.guild.icon)
+
+        try:  # We try to send the message in the channel
+            await channel.send(
+                f"{emojis.UPVOTE} A member **joined** the server",
+                embed=embed
+            )
+
+        except discord.Forbidden:
+            await self.db.update_server(str(member.guild.id), "logs.join", 1, True)
+            return
+
+        except discord.NotFound:
+            await self.db.update_server(str(member.guild.id), "logs.join", 1, True)
+            return
+
+        except Exception as e:  # If we fail, we delete the logs channel since it doesn't work.
+            print("Issue with sending message in channel in on_member_join:", e)
+            return
 
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
@@ -698,59 +820,9 @@ class Setup(commands.Cog):
     async def on_member_join(self, member):
         server = await self.db.get_server(str(member.guild.id))
 
-        # If the server wants to log user joins, log it.
-        if 'logs' in server and 'join' in server['logs']:
-            await self.log_user_join(server, member)
-
         # If the server has Autoroles, give the user the roles
         if 'autoroles' in server and len(server['autoroles']) > 0:
             await self.give_user_roles(server, member)
-
-    @commands.Cog.listener()
-    async def on_member_remove(self, member):
-        server = await self.db.get_server(str(member.guild.id))
-        if 'logs' in server and 'join' in server['logs']:
-            try:  # We try to load the join channel
-                channel = await self.bot.fetch_channel(server['logs']['leave'])
-
-            except discord.Forbidden:
-                await self.db.update_server(str(member.guild.id), "logs.leave", 1, True)
-                return
-
-            except discord.NotFound:
-                await self.db.update_server(str(member.guild.id), "logs.leave", 1, True)
-                return
-
-            except Exception as e:  # If we fail, we delete the logs channel since it doesn't work.
-                print(f"Issue with fetching channel in on_member_leave (Server: {server})", e)
-                return
-
-            embed = discord.Embed(color=config.COLOR_EMPTY)
-            embed.timestamp = datetime.datetime.utcnow()
-            embed.set_footer(text=f"User ID: {member.id}")
-
-            embed.add_field(name="User", value=f"{member.mention}")
-            embed.add_field(name="Created", value=f"{self.how_long_ago(member.created_at.timestamp())} ago")
-            embed.set_author(name=f"{member}", icon_url=get.user_avatar(member))
-            embed.set_thumbnail(url=member.guild.icon)
-
-            try:  # We try to send the message in the channel
-                await channel.send(
-                    f"{emojis.DOWNVOTE} A member **left** the server",
-                    embed=embed
-                )
-
-            except discord.Forbidden:
-                await self.db.update_server(str(member.guild.id), "logs.join", 1, True)
-                return
-
-            except discord.NotFound:
-                await self.db.update_server(str(member.guild.id), "logs.leave", 1, True)
-                return
-
-            except Exception as e:  # If we fail, we delete the logs channel since it doesn't work.
-                print("Issue with sending message in channel in on_member_join:", e)
-                return
 
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
@@ -1119,24 +1191,6 @@ class Setup(commands.Cog):
                 )
             )
 
-    async def setup_logs(self, interaction: discord.Interaction, user_id, channel, log_type):
-        try:  # We try to send a message that auto deletes to ensure the bot has permissions
-            await channel.send("This is a test message. Auto deletes in 2 seconds...", delete_after=2)
-
-        except discord.Forbidden:
-            await interaction.response.send_message(
-                f"Failed to send messages to <#{channel.id}>.\n"
-                "Give me `Send messages` permission and try again!",
-                ephemeral=True
-            )
-            return
-
-        await self.db.update_server(interaction.guild.id, f"logs.{log_type}", channel.id)
-
-        await interaction.response.send_message(
-            f"Great work <@{user_id}>! You will now have {log_type} messages logged for your server!",
-        )
-
     async def setup_suggestions(self, interaction: discord.Interaction, user_id, channel):
         try:  # We try to send a message that auto deletes to ensure the bot has permissions
             await channel.send("This is a test message. Auto deletes in 2 seconds...", delete_after=2)
@@ -1336,9 +1390,9 @@ class Setup(commands.Cog):
     async def setup_command(
         self, interaction: discord.Interaction,
         category: Literal[
-            "suggestions", "button roles", "join logs", "leave logs",
-            "user logs", "edit logs", "delete logs", "moderation logs",
-            "autoroles",  # "levels"
+            "suggestions",
+            "button roles",
+            "autoroles",
         ], channel: discord.TextChannel = None
     ):
 
@@ -1362,24 +1416,6 @@ class Setup(commands.Cog):
             elif category == "button roles":
                 await self.setup_reaction_roles(interaction, user_id, channel)
 
-            elif category == "join logs":
-                await self.setup_logs(interaction, user_id, channel, "join")
-
-            elif category == "leave logs":
-                await self.setup_logs(interaction, user_id, channel, "leave")
-
-            elif category == "user logs":
-                await self.setup_logs(interaction, user_id, channel, "user")
-
-            elif category == "edit logs":
-                await self.setup_logs(interaction, user_id, channel, "edit")
-
-            elif category == "delete logs":
-                await self.setup_logs(interaction, user_id, channel, "delete")
-
-            elif category == "moderation logs":
-                await self.setup_logs(interaction, user_id, channel, "moderation")
-
             elif category == "autoroles":
                 await self.setup_autoroles(interaction, user_id)
 
@@ -1399,8 +1435,7 @@ class Setup(commands.Cog):
     async def deactivate_command(
         self, interaction: discord.Interaction,
         category: Literal[
-            "suggestions", "join logs", "leave logs", "edit logs",
-            "user logs", "delete logs", "moderation logs", "button roles",
+            "suggestions", "button roles",
             "autoroles", # "levels"
         ]
     ):
@@ -1416,24 +1451,6 @@ class Setup(commands.Cog):
 
             elif category == "levels":
                 await self.db.update_server(str(interaction.guild.id), "levels", 1, True)
-
-            elif category == "join logs":
-                await self.db.update_server(str(interaction.guild.id), "logs.join", 1, True)
-
-            elif category == "leave logs":
-                await self.db.update_server(str(interaction.guild.id), "logs.leave", 1, True)
-
-            elif category == "leave logs":
-                await self.db.update_server(str(interaction.guild.id), "logs.user", 1, True)
-
-            elif category == "edit logs":
-                await self.db.update_server(str(interaction.guild.id), "logs.edit", 1, True)
-
-            elif category == "delete logs":
-                await self.db.update_server(str(interaction.guild.id), "logs.delete", 1, True)
-
-            elif category == "moderation logs":
-                await self.db.update_server(str(interaction.guild.id), "logs.moderation", 1, True)
 
             elif category == "button roles":
                 await self.db.update_server(str(interaction.guild.id), "reaction_roles", 1, True)

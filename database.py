@@ -28,17 +28,20 @@ class Database(object):
 
     async def sync_invites(self, guild):
         for invite in await guild.invites():
-            await self.invites.update_one({
-                "invite_id": invite.id,
+            await self.db.invites.update_one(
+            {
                 "guild_id": str(guild.id),
                 "user_id": str(invite.inviter.id),
-            }, {
+                "invite_id": str(invite.id),
+            },
+            {
                 "$set": {
-                    "uses": 0,
-                    "joins": [],
-                    "leaves": []
+                    "leaves": {},
+                    "joins": {},
+                    "uses": invite.uses
                 }
-            }, upsert=True)
+            }, upsert=True
+        )
 
     async def add_game(self, data):
         data = await self.active_games.insert_one(data)

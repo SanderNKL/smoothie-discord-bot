@@ -23,7 +23,9 @@ from handlers import healthcheck
 DATABASE = Database()
 INTENTS = discord.Intents.default()
 INTENTS.guilds = True
+INTENTS.members = True
 INTENTS.message_content = True
+INTENTS.presences = True
 
 bot = commands.AutoShardedBot(
     intents=INTENTS,
@@ -65,10 +67,11 @@ COGS = [
     'cogs.hug',
     'cogs.pat',
     'cogs.slap',
+    'cogs.logs',
     'cogs.invites',
     'cogs.choose',
     'cogs.connect4',
-    'cogs.ttt',
+    'cogs.ttt'
 ]
 
 @bot.event

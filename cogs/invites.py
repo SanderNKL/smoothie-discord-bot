@@ -23,16 +23,7 @@ class Invite(commands.Cog):
         self,
         invite: discord.Invite
     ):
-        await self.db.invites.insert_one(
-            {
-                "guild_id": str(invite.guild.id),
-                "user_id": str(invite.inviter.id),
-                "invite_id": str(invite.id),
-                "joins": {},
-                "leaves": {},
-                "uses": 0
-            }
-        )
+        await self.add_invite(invite.guild, invite.inviter, invite)
 
     @commands.Cog.listener()
     async def on_member_remove(
@@ -85,10 +76,21 @@ class Invite(commands.Cog):
             }, upsert=True
         )
 
+    async def find_invite(
+        self,
+        user: discord.User,
+        guild_invite: discord.Invite
+    ):
+        return await self.db.invites.find_one({
+            "invite_id": str(guild_invite.id),
+            "guild_id": str(user.guild.id),
+            "user_id": str(guild_invite.inviter.id)
+        })
+
     @commands.Cog.listener()
     async def on_member_join(
         self,
-        user: discord.User
+        user
     ):
         try:
             if not user.guild.me.guild_permissions.manage_guild:
@@ -99,11 +101,7 @@ class Invite(commands.Cog):
 
             # LIST OF INVITES
             for guild_invite in await user.guild.invites():
-                invite = await self.db.invites.find_one({
-                    "invite_id": str(guild_invite.id),
-                    "guild_id": str(user.guild.id),
-                    "user_id": str(guild_invite.inviter.id)
-                })
+                invite = await self.find_invite(user, guild_invite)
 
                 # Invite found. Check if it has been updated
                 if invite:
